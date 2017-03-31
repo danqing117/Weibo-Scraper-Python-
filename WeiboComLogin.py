@@ -127,7 +127,7 @@ class WeiboComLogin(object):
         if len(s.title.text) == 17:
             print(s.title.text)
             print("weibo.com login success!")
-            del(session.headers["cookie"]) # keeo login state
+            del(session.headers["cookie"]) # keep login state
         else:
             print("weibo.com login failed!")
             
