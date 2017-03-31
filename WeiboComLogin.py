@@ -103,7 +103,7 @@ class WeiboComLogin(object):
             print("新浪通行证 login fail!")
             print(dictData)
         
-        """ save cookie and login to weibo.com """
+        """ add cookie to request header to login weibo.com """
         cookies = r.cookies.get_dict()
         cookies = [key + "=" + value for key, value in cookies.items()]
         cookies = "; ".join(cookies)
