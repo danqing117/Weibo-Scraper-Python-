@@ -2,10 +2,11 @@
 """
 Created on Wed Jul  6 15:58:30 2016
 
-@author: danqing
+@author: Danqing Yin
 
-Jingwen project：
-search some keywords on weibo.cn
+Python project：
+search some keywords on weibo.cn and then save all the results(image, map, users' information) and analyzed them.
+All the images are saved on local pc, and users' information is written in an excel file.
 """
 
 import WeiboCnLogin as wl
@@ -15,43 +16,16 @@ import re, os, urllib
 import pandas as pd
 import time
 
-''' import keywords from excel file'''
-'''
-with open("HalifaxKeyword.csv","r") as f:
-    lines = f.readlines()
-    
-keywords2 = [item.strip() for item in lines]
-keywords = []
-for item in keywords2:
-    item_new = ' '.join(item.split(','))
-    item_new = ' '.join(item_new.split('"'))
-    item_new.strip()
-    item_new = ' '.join(item_new.split('\\'))
-    item_new = ' '.join(item_new.split('/'))
-    item_new = item_new.strip()
-    keywords.append(item_new)
-keywords = keywords[272:]
-    
-lkeywords = []
-nkeywords = []
-'''
-'''
-with open('lkeywords.txt','r') as f:
-    lines = f.readlines()
-keywords = [item.strip()+' halifax' for item in lines]
-'''
-keywords = ['Halifax Instagram','Dalhousie University Instagram','Saint Mary University Instagram']
-''' login '''
-user_account = ["13328265449"]
+keywords = ['keywords1','keywords2']
+user_account = ['account1','account2','account3'] # better to use more than 1 account in case of being restricted
 password = "a123456" 
-
 
 for key in range(len(keywords)):
     keyword = keywords[key]
     print('keyword: ', keyword)
     user_account = user_account[1:] + [user_account[0]]
     flag = 1
-   # time.sleep(5)
+    
     try:
         del(cur_page2)
     except: pass
@@ -59,14 +33,14 @@ for key in range(len(keywords)):
     
     while flag == 1:
         
-        print(keyword)
+        print('Current keywords: '+keyword)
+        ''' login '''
         print("login...")
         wb = wl.WeiboCnLogin(user_account[0], password)
         session = wb.weibo_cn_login()
         
         ''' search page '''
-        search_request_url = "http://weibo.cn/search/?pos=search"  #url of searching page
-        #keyword = "Halifax Public Gardens"
+        search_request_url = "http://weibo.cn/search/?pos=search"  # url of searching page
         postdata = {
             "keyword":keyword,
             "smblog": "搜微博"
@@ -74,9 +48,11 @@ for key in range(len(keywords)):
         r = session.post(search_request_url, headers = wb.headers, data = postdata)
         s = BeautifulSoup(r.content, "lxml")
         print("response status: ", r)
+        
+        # if your account is restricted
         if str(r) == "<Response [403]>":
             user_account = user_account[1:] + [user_account[0]]
-            print("更换账户")
+            print("Change account")
             continue
             
         try:
@@ -85,13 +61,11 @@ for key in range(len(keywords)):
             print(num_info)
             if re.compile('抱歉').findall(num_info)!=[]:
                 nkeywords.append(keyword)
-                print('无结果，换下一个关键词')
+                print('no results, change another keywords')
                 break
         except:
             print("search failed")
             break
-        
-        #time.sleep(5)
             
         ''' scraping search results'''
         # number of pages
@@ -101,17 +75,13 @@ for key in range(len(keywords)):
             print('numbers of pages: ', num_pages)
             if num_pages==100:
                 lkeywords.append(keyword)
-                print('结果太多，换下一个关键词')
+                print('too many results')
                 break
         except:
             num_pages_text = 'Null'
             num_pages = 1
             print('numbers of pages: ', num_pages)
         
-        
-        #time.sleep(5)
-        
-        # initialization
         next_page_text = '下页'
         cur_page = 1
         initial_cur_page = cur_page
@@ -134,7 +104,7 @@ for key in range(len(keywords)):
                 next_page_text = 'Null'
             print(next_page_text)
             
-            # scarping weibo
+            # scraping on each result
             items_current_page = s_next.findAll('div',{'class':'c','id':re.compile('M_.*')})
             
             for item in items_current_page:
@@ -156,8 +126,8 @@ for key in range(len(keywords)):
                     if re.compile("组图").findall(l_find_image_map[i]) != []:
                         images_index = i
                         
-                # create file for each weibo item
-                path = r'C:\Users\danqi\OneDrive\weibo_halifax_images\\' + keyword + '\\' + weibo_id
+                # create file for each search result
+                path = r'C:\Users\\' + keyword + '\\' + weibo_id
                 try:
                     os.makedirs(path)
                 except FileExistsError:
@@ -217,25 +187,26 @@ for key in range(len(keywords)):
                                     'images':im_flag,
                                     'map_url':map_im_url
                                     })
-            # next page
+            # scraping next page
             cur_page += 1
             try:
                 r = session.get(next_page_url, headers = wb.headers)
                 s_next = BeautifulSoup(r.content, 'lxml')
             except: pass
-            #print(s)
+         
             cur_page2 = cur_page
+            # change account if the current account has been scraping more than 10 pages
             if cur_page == initial_cur_page+10:
                 user_account = user_account[1:] + [user_account[0]]
-                print("更换账户")
+                print("change account")
                 break
        
-        # if finishing the search of current keyword  
+        # finish the search of current keyword and save results in an excel file
         if cur_page2 > num_pages:
             flag = 0
             print('save results')
             df = pd.DataFrame(weibo_dict)
-            csv_path = r'C:\Users\danqi\OneDrive\weibo_halifax_images\\' + keyword + '\\'+ keyword +'.csv'
+            csv_path = r'C:\Users\\' + keyword + '\\'+ keyword +'.csv'
             df.to_csv(csv_path,index = False)
     
             
